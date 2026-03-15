@@ -48,6 +48,20 @@ def _setup_logging(verbose: bool = False) -> None:
 
 # ── Core crawl-and-store logic ──────────────────────────────────────────────
 
+def _cleanup_stale_crawls() -> None:
+    """Mark any 'running' crawl logs as 'interrupted' (from prior crashes)."""
+    session = get_session()
+    stale = session.query(CrawlLog).filter(CrawlLog.status == "running").all()
+    for log in stale:
+        log.status = "interrupted"
+        log.finished_at = datetime.now(timezone.utc)
+    if stale:
+        session.commit()
+        logger = logging.getLogger(__name__)
+        logger.info("Marked %d stale crawl(s) as interrupted", len(stale))
+    session.close()
+
+
 def run_crawl() -> list[BuildingOrder]:
     """Execute a full crawl, store results, and return newly found orders."""
     session = get_session()
@@ -57,8 +71,13 @@ def run_crawl() -> list[BuildingOrder]:
 
     new_orders: list[BuildingOrder] = []
 
+    def _on_progress(processed: int, total: int) -> None:
+        log.orders_found = processed
+        log.orders_total = total
+        session.commit()
+
     try:
-        scraped = crawl_all_orders()
+        scraped = crawl_all_orders(on_progress=_on_progress)
         log.orders_found = len(scraped)
 
         for info in scraped:
@@ -259,26 +278,21 @@ def run(verbose: bool = typer.Option(False, "--verbose", "-v")) -> None:
     init_db()
 
     console.print("[bold blue]Building Orders Monitor — starting up...[/]")
+    _cleanup_stale_crawls()
 
-    # Initial crawl
-    new_orders = run_crawl()
-    _display_results(new_orders)
-    new_swo = [o for o in new_orders if "stop work" in o.order_type.lower()]
-    if new_swo:
-        send_notification(new_swo)
+    def _do_crawl() -> None:
+        new_orders = run_crawl()
+        _display_results(new_orders)
+        new_swo = [o for o in new_orders if "stop work" in o.order_type.lower()]
+        if new_swo:
+            send_notification(new_swo)
 
-    # Schedule future crawls
-    def _scheduled_crawl() -> None:
-        console.print(f"\n[dim]Scheduled crawl at {datetime.now(timezone.utc).isoformat()}[/]")
-        orders = run_crawl()
-        _display_results(orders)
-        swo = [o for o in orders if "stop work" in o.order_type.lower()]
-        if swo:
-            send_notification(swo)
-
+    # Schedule crawls (initial + recurring)
     scheduler = BackgroundScheduler()
+    # Run initial crawl in background so the dashboard is available immediately
+    scheduler.add_job(_do_crawl, "date")
     scheduler.add_job(
-        _scheduled_crawl,
+        _do_crawl,
         "interval",
         minutes=settings.crawl_interval_minutes,
     )

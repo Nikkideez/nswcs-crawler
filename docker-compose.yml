@@ -18,11 +18,12 @@ services:
   app:
     build: .
     env_file: .env
+    network_mode: host
+    environment:
+      DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5433/building_orders
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "${DASHBOARD_PORT:-8080}:8080"
     volumes:
       - ./data:/app/data
 

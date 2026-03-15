@@ -107,12 +107,19 @@ def send_notification(new_orders: list[BuildingOrder]) -> bool:
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(settings.smtp_username, settings.smtp_password)
-            server.sendmail(settings.email_from, [settings.email_to], msg.as_string())
+        if settings.smtp_port == 465:
+            # Implicit SSL
+            with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port) as server:
+                server.login(settings.smtp_username, settings.smtp_password)
+                server.sendmail(settings.email_from, [settings.email_to], msg.as_string())
+        else:
+            # STARTTLS (port 587, etc.)
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(settings.smtp_username, settings.smtp_password)
+                server.sendmail(settings.email_from, [settings.email_to], msg.as_string())
         logger.info("Notification email sent to %s", settings.email_to)
         return True
     except Exception as exc:

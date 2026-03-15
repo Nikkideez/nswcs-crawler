@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from urllib.parse import urljoin
@@ -26,6 +27,24 @@ from playwright.sync_api import sync_playwright
 from src.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _normalise_date(raw: str | None) -> str:
+    """Convert various date formats to YYYY-MM-DD."""
+    if not raw:
+        return ""
+    raw = raw.strip()
+    # Already ISO
+    if re.match(r"\d{4}-\d{2}-\d{2}", raw):
+        return raw[:10]
+    # "17 February 2026" / "8 September 2023"
+    for fmt in ("%d %B %Y", "%d %b %Y"):
+        try:
+            return datetime.strptime(raw, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return raw
+
 
 # ── Data container ──────────────────────────────────────────────────────────
 
@@ -186,6 +205,8 @@ def scrape_order_detail(url: str) -> OrderInfo:
     pdf_link = soup.find("a", href=re.compile(r"\.pdf", re.IGNORECASE))
     if pdf_link:
         info.pdf_url = urljoin(url, pdf_link["href"])
+
+    info.publication_date = _normalise_date(info.publication_date)
 
     return info
 
@@ -396,22 +417,29 @@ def discover_order_urls() -> list[str]:
     return urls
 
 
-def crawl_all_orders() -> list[OrderInfo]:
+def crawl_all_orders(
+    on_progress: Callable[[int, int], None] | None = None,
+) -> list[OrderInfo]:
     """
     Full crawl: discover order URLs then scrape each detail page.
     Returns a list of OrderInfo for all found orders.
+
+    *on_progress(processed, total)* is called after each detail page.
     """
     urls = discover_order_urls()
-    logger.info("Scraping %d order detail pages...", len(urls))
+    total = len(urls)
+    logger.info("Scraping %d order detail pages...", total)
 
     orders: list[OrderInfo] = []
-    for url in urls:
+    for i, url in enumerate(urls, 1):
         info = scrape_order_detail(url)
         if info.title:
             orders.append(info)
             logger.info(
                 "  [%s] %s", info.order_type, info.company_name or info.title
             )
+        if on_progress:
+            on_progress(i, total)
 
     return orders
 

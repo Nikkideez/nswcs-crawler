@@ -56,13 +56,37 @@ def create_app() -> FastAPI:
             else None,
         }
 
+    @web.get("/api/crawl/status")
+    async def crawl_status():
+        session = get_session()
+        running = (
+            session.query(CrawlLog)
+            .filter(CrawlLog.status == "running")
+            .first()
+        )
+        session.close()
+        if running:
+            return {
+                "crawling": True,
+                "orders_found": running.orders_found,
+                "orders_total": running.orders_total,
+                "started_at": running.started_at.isoformat(),
+            }
+        return {"crawling": False}
+
     @web.get("/api/orders")
-    async def api_orders(order_type: str | None = None):
+    async def api_orders(order_type: str | None = None, sort: str | None = None):
         session = get_session()
         q = session.query(BuildingOrder)
         if order_type:
             q = q.filter(BuildingOrder.order_type.ilike(f"%{order_type}%"))
-        orders = q.order_by(BuildingOrder.first_seen.desc()).all()
+        if sort == "date_asc":
+            q = q.order_by(BuildingOrder.publication_date.asc())
+        elif sort == "date_desc":
+            q = q.order_by(BuildingOrder.publication_date.desc())
+        else:
+            q = q.order_by(BuildingOrder.first_seen.desc())
+        orders = q.all()
         session.close()
         return [
             {

@@ -57,6 +57,7 @@ class CrawlLog(Base):
     )
     finished_at = Column(DateTime)
     orders_found = Column(Integer, default=0)
+    orders_total = Column(Integer, default=0)
     new_orders = Column(Integer, default=0)
     status = Column(String(50), default="running")
     error_message = Column(Text)

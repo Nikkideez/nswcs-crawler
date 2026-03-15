@@ -40,9 +40,8 @@ A web scraper and notification system that monitors building work orders on the
 └──────┬──────┘  └────────────────┘
        │
 ┌──────▼──────────────────────────┐
-│  FastAPI (API + static files)   │
-│  React SPA (Vite + shadcn/ui)   │
-│  http://localhost:8080           │
+│  FastAPI API :8080               │
+│  React SPA (Vite) :5173          │
 └─────────────────────────────────┘
 ```
 
@@ -92,7 +91,9 @@ docker compose run --rm app crawl
 docker compose up
 ```
 
-The dashboard will be available at **http://localhost:8080**.
+The API will be available at **http://localhost:8080**. For frontend
+development, see section 4 below — the Vite dev server runs at
+**http://localhost:5173**.
 
 ### 3. CLI commands
 
@@ -127,7 +128,7 @@ python -m src.main dashboard
 # In another terminal, start the Vite dev server
 cd frontend
 npm install
-npm run dev                 # http://localhost:5173, proxies /api → :8080
+npm run dev                 # http://localhost:5173 (proxies /api → :8080)
 ```
 
 ### 5. Running without Docker
@@ -197,7 +198,8 @@ python -m src.main crawl
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/stats` | Order counts + last crawl info |
-| `GET` | `/api/orders?order_type=…` | List orders (optional type filter) |
+| `GET` | `/api/orders?order_type=…&sort=…` | List orders (optional type filter + sort) |
+| `GET` | `/api/crawl/status` | Check if a crawl is in progress (with progress) |
 | `POST` | `/api/crawl` | Trigger a crawl, returns new orders found |
 | `GET` | `/*` | SPA catch-all (serves React app) |
 

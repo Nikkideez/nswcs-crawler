@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -14,6 +15,8 @@ import { EmptyState } from "./EmptyState";
 interface OrdersTableProps {
   orders: Order[];
   loading: boolean;
+  sort: string;
+  onSortChange: (sort: string) => void;
 }
 
 function badgeLabel(type: string): string {
@@ -41,7 +44,14 @@ function orderBadgeClass(type: string) {
   return "";
 }
 
-export function OrdersTable({ orders, loading }: OrdersTableProps) {
+export function OrdersTable({ orders, loading, sort, onSortChange }: OrdersTableProps) {
+  const toggleSort = () => {
+    if (sort === "date_desc") onSortChange("date_asc");
+    else if (sort === "date_asc") onSortChange("");
+    else onSortChange("date_desc");
+  };
+
+  const SortIcon = sort === "date_desc" ? ArrowDown : sort === "date_asc" ? ArrowUp : ArrowUpDown;
   if (loading) {
     return (
       <div className="space-y-2">
@@ -63,7 +73,15 @@ export function OrdersTable({ orders, loading }: OrdersTableProps) {
             <TableHead className="uppercase text-xs tracking-wider">Company</TableHead>
             <TableHead className="uppercase text-xs tracking-wider">ACN</TableHead>
             <TableHead className="uppercase text-xs tracking-wider">Address</TableHead>
-            <TableHead className="uppercase text-xs tracking-wider">Date</TableHead>
+            <TableHead
+              className="uppercase text-xs tracking-wider cursor-pointer select-none hover:text-foreground"
+              onClick={toggleSort}
+            >
+              <span className="inline-flex items-center gap-1">
+                Date
+                <SortIcon className="h-3.5 w-3.5" />
+              </span>
+            </TableHead>
             <TableHead className="uppercase text-xs tracking-wider">Links</TableHead>
           </TableRow>
         </TableHeader>
