@@ -1,0 +1,26 @@
+# Web scraping
+playwright==1.49.1
+beautifulsoup4==4.12.3
+httpx==0.28.1
+lxml==5.3.0
+
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+alembic==1.14.0
+
+# Web dashboard
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# CLI & scheduling
+typer==0.15.1
+rich==13.9.4
+apscheduler==3.10.4
+
+# Email (stdlib) - no extra deps needed
+
+# Utilities
+python-dotenv==1.0.1
+pydantic==2.10.3
+pydantic-settings==2.7.0
